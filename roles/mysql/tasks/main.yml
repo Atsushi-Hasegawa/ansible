@@ -1,2 +1,4 @@
 ---
 - include: mysql.yml
+- include: configure.yml
+- include: ../handlers/main.yml
