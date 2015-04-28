@@ -1,2 +1,3 @@
 ---
 - include: httpd.yml
+- include: ../handlers/main.yml
