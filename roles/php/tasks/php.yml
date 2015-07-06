@@ -1,0 +1,25 @@
+--- 
+- name: epel download
+  get_url: url=https://dl.fedoraproject.org/pub/epel/{{centos}}/x86_64/epel-release-{{epel_version}}.noarch.rpm dest=/usr/local/src
+
+- name: remi download
+  get_url: url=http://rpms.famillecollet.com/enterprise/remi-release-{{remi_version}}.rpm dest=/usr/local/src
+
+- name: epel install
+  command: rpm -ivh --force epel-release-{{epel_version}}.noarch.rpm chdir=/usr/local/src
+
+- name: remi install
+  command: rpm -ivh --force remi-release-{{remi_version}}.rpm chdir=/usr/local/src
+
+- name: php install
+  yum: name={{item}} enablerepo=remi state=installed
+  with_items:
+   - php
+   - php-devel
+   - php-common
+   - php-gd
+   - php-mbstring
+   - php-mysql
+   - php-pdo
+   - php-pear
+   - php-xml

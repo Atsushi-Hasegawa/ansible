@@ -1,0 +1,4 @@
+---
+centos: 6
+epel_version: 6-8
+remi_version: 6
