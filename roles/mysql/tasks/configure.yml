@@ -4,3 +4,9 @@
               insertafter="^:OUTPUT " line="-A INPUT -p tcp --dport {{ mysql_port }} -j ACCEPT"
   notify: restart iptables
   notify: start mysqld
+
+- name: add mysqld moji-code
+  template: >
+   src=my.cnf.j2
+   dest=/etc/my.cnf
+  notify: start mysqld
