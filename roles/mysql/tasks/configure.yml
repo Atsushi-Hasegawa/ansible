@@ -5,10 +5,10 @@
   notify: restart iptables
 
 - name: add mysqld moji-code
-  template:
-   src: my.cnf.j2
-   dest: /etc/my.cnf
-   user: root
-   group: root
-   mode: 0644
+  template: >
+   src=my.cnf.j2
+   dest=/etc/my.cnf
+   owner=root
+   group=root
+   mode=0644
   notify: start mysqld
