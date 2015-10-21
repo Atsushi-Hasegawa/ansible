@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  sudo: yes
+  roles:
+   #- httpd
+   #- mysql
+   #- java
+   #- mongodb
+   #- ruby
+   - python
+   #- php
+   #- gitlab
+   #- npm

@@ -1,15 +1,22 @@
 ---
-- name: "download ruby package"
+- name: download ruby package
   get_url: url=http://cache.ruby-lang.org/pub/ruby/2.2/{{version}}.tar.gz dest={{src_dir}}
 
-- name: "decompress ruby package"
+- name: decompress ruby package
   command: tar xvfz {{version}}.tar.gz chdir={{src_dir}}
 
-- name: "configure ruby package"
+- name: configure ruby package
   command: ./configure chdir={{src_dir}}/{{version}}
 
-- name: "ruby make"
+- name: make ruby
   command: make chdir={{src_dir}}/{{version}}
 
-- name: "ruby install"
+- name: make install ruby install
   command: make install chdir={{src_dir}}/{{version}}
+
+- name: gem update
+  command: gem update --system
+ 
+- name: bundler install
+  command: gem install bundler
+

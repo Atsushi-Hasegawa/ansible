@@ -1,0 +1,12 @@
+---
+- name: configure python
+  command: ./configure --prefix=/opt/local chdir=/usr/local/src/Python-{{python_version}}
+
+- name: make python source
+  command: make chdir=/usr/local/src/Python-{{python_version}}
+
+- name: make install python source
+  command: make altinstall chdir=/usr/local/src/Python-{{python_version}}
+
+- name: create symbolic link
+  command: ln -snf /opt/local/python2.7 python chdir=/usr/local/bin

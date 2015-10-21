@@ -1,0 +1,5 @@
+- name: service postfix
+  service: name=postfix state=start
+
+- name: gitlab-ctl restart
+  command: gitlab-ctl restart

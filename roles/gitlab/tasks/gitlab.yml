@@ -1,0 +1,27 @@
+---
+- name: git install 
+  yum: name=git state=latest
+
+- name: install openssh-server
+  yum: name=openssh-server state=present
+
+- name: install postfix
+  yum: name=postfix state=present
+  notify: postfix
+
+- name: install cronie
+  yum: name=cronie state=present
+
+- name: download gitlab package
+  get_url: url=https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh dest=/usr/local/src 
+
+- name: install gitlab 
+  command: bash script.rpm.sh chdir=/usr/local/src
+
+- name: install gitlab-ce
+  yum: name=gitlab-ce state=present
+  notify: gitlab-ctl
+
+- name: gitlab reconfigure
+  command: gitlab-ctl reconfigure
+  notify: gitlab-ctl restart

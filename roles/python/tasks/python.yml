@@ -1,0 +1,20 @@
+---
+- name: install Developer Tools
+  yum: name="@Development tools" state=present
+
+- name: install necessary python tool
+  yum: name={{item}} state=present
+  with_items:
+   - zlib-devel
+   - bzip2-devel
+   - openssl-devel
+   - ncurses-devel
+   - sqlite-devel
+   - readline-devel
+   - tk-devel
+
+- name: download python
+  get_url: url=https://www.python.org/ftp/python/2.7.6/Python-{{python_version}}.tgz dest=/usr/local/src
+
+- name: decompress python
+  command: tar xvfz Python-{{python_version}}.tgz chdir=/usr/local/src

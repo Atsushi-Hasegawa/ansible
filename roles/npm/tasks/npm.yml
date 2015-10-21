@@ -1,0 +1,34 @@
+---
+
+- name: install the 'Development tools' package group
+  yum: name="@Development tools" state=present
+
+- name: install kernel-devel and kernel-headers
+  yum: name={{item}} state=present
+  with_items:
+   - kernel-devel
+   - kernel-headers
+
+- name: add epel repository
+  yum: name=epel-release state=present
+
+- name: install npm and nodejs
+  yum: name={{item}} enablerepo=epel state=present
+  with_items:
+    - npm
+    - nodejs
+
+- name: install gcc
+  yum: name=gcc state=present
+
+- name: install gcc-c++
+  yum: name=gcc-c++ state=present
+
+- name: install coffee,hubot,yo,redis,generator-hubot
+  npm: name={{item}} global=yes state=present 
+  with_items:
+   - coffee-script
+   - hubot
+   - yo
+   - redis
+   - generator-hubot
