@@ -1,3 +1,0 @@
----
-- name: apache再起動
-  service: name=httpd state=restarted
