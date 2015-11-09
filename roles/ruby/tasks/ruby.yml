@@ -1,22 +1,24 @@
 ---
-- name: download ruby package
-  get_url: url=http://cache.ruby-lang.org/pub/ruby/2.2/{{version}}.tar.gz dest={{src_dir}}
+- name: yum upgrade
+  yum: name=* state=latest
 
-- name: decompress ruby package
-  command: tar xvfz {{version}}.tar.gz chdir={{src_dir}}
+- name: install the 'Development tools' package group
+  yum: name="@Development tools" state=present
 
-- name: configure ruby package
-  command: ./configure chdir={{src_dir}}/{{version}}
+- name: install zlib,zlib-devel,openssl,openssl-devel
+  yum: name={{item}} state=latest
+  with_items:
+   - zlib
+   - zlib-devel
+   - openssl
+   - openssl-devel
 
-- name: make ruby
-  command: make chdir={{src_dir}}/{{version}}
+- name: install ruby
+  yum: name=ruby state=latest
 
-- name: make install ruby install
-  command: make install chdir={{src_dir}}/{{version}}
+- name: ruby-devel
+  yum: name=ruby-devel state=latest
 
-- name: gem update
-  command: gem update --system
- 
-- name: bundler install
-  command: gem install bundler
+- name: gem install json_pure
+  gem: name=json_pure state=latest
 

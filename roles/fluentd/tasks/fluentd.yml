@@ -2,6 +2,3 @@
 - name: fluentdをインストール
   command: gem install fluentd --no-ri --no-rdoc
 
-- name: setup fluentd
-  command: fluentd --setup fluent
-

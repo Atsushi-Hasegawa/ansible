@@ -5,11 +5,5 @@
    - curl-devel 
    - java-{{java_version}}-openjdk
 
-- copy:
-  src=elasticsearch.repo
-  dest=/etc/yum.repos.d/elasticsearch.repo
-  owner=root
-  mode=0755
-
-- name: install elasticsearch
-  yum: name=elasticsearch state=latest
+- name: rpm package install
+  yum: name=https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/rpm/elasticsearch/2.0.0/elasticsearch-2.0.0.rpm state=present
