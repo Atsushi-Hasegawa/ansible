@@ -1,4 +1,4 @@
+---
 - name: httpd is installed
-  yum: name=httpd state=installed
-  notify: 
-  - apache再起動
+  yum: name=httpd state=latest
+  notify: restart httpd

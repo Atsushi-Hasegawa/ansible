@@ -1,6 +1,10 @@
 ---
 - name: download kibana
-  get_url: url=https://download.elastic.co/kibana/kibana/kibana-{{version}}-linux-x64.tar.gz dest={{src_dir}}
+  get_url: 
+   url=https://download.elastic.co/kibana/kibana/kibana-{{version}}-linux-x64.tar.gz 
+   dest={{src_dir}}
 
 - name: decompress kibana
-  command: tar xvfz kibana-{{version}}-linux-x64.tar.gz chdir={{src_dir}}
+  command: 
+   tar xvfz kibana-{{version}}-linux-x64.tar.gz 
+   chdir={{src_dir}}
