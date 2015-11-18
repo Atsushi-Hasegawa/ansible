@@ -4,3 +4,6 @@
 
 - name: decompress kibana
   command: tar xvfz kibana-{{version}}-linux-x64.tar.gz chdir={{src_dir}}
+
+- name: rename kibana dir
+  command: mv kibana-{{version}}-linux-x64.tar.gz kibana chdir={{src_dir}}

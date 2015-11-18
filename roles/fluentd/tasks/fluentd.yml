@@ -1,4 +1,5 @@
 ---
 - name: fluentdをインストール
-  command: gem install fluentd --no-ri --no-rdoc
+  command: curl -L http://toolbelt.treasuredata.com/sh/install-redhat-td-agent2.sh | sh
+
 

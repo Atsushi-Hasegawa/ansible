@@ -6,4 +6,4 @@
    - java-{{java_version}}-openjdk
 
 - name: rpm package install
-  yum: name=https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/rpm/elasticsearch/2.0.0/elasticsearch-2.0.0.rpm state=present
+  yum: name=https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/rpm/elasticsearch/{{es_version}}/elasticsearch-{{es_version}}.rpm state=present
