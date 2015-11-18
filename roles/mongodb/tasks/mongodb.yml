@@ -1,6 +1,11 @@
 ---
 - name: copy mongodb.repo
-  copy: src=mongodb.repo dest=/etc/yum.repos.d/mongodb.repo owner=root
+  copy: 
+   src=mongodb.repo 
+   dest=/etc/yum.repos.d/mongodb.repo 
+   owner=root
+   group=root
+   mode=0644
 
 - name: install mongodb
   yum: name=mongodb pkg=mongodb-org

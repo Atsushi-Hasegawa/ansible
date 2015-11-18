@@ -1,8 +1,12 @@
 ---
-- name: insert iptable rule
-  lineinfile: dest=/etc/sysconfig/iptables state=present regexp="{{mysql_port}}"
-              insertafter="^:OUTPUT " line="-A INPUT -p tcp --dport {{ mysql_port }} -j ACCEPT"
-  notify: restart iptables
+- name: copy iptables file
+  copy:
+   src=iptables
+   dest=/etc/sysconfig
+   owner=root
+   group=root
+   mode=0644
+  notify: start iptables
 
 - name: add mysqld moji-code
   template: >

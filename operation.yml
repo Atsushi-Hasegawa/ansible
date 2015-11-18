@@ -1,13 +1,13 @@
 ---
-- hosts: localhost
+- hosts: operation
   sudo: yes
   roles:
    #- httpd
-   #- mysql
+   - mysql
    #- java
    #- mongodb
    #- ruby
-   - python
+   #- python
    #- php
    #- gitlab
    #- npm

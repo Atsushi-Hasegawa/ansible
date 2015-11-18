@@ -7,7 +7,7 @@
 
 - name: install postfix
   yum: name=postfix state=present
-  notify: postfix
+  notify: start postfix
 
 - name: install cronie
   yum: name=cronie state=present
@@ -20,7 +20,6 @@
 
 - name: install gitlab-ce
   yum: name=gitlab-ce state=present
-  notify: gitlab-ctl
 
 - name: gitlab reconfigure
   command: gitlab-ctl reconfigure
