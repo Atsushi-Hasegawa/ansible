@@ -1,4 +1,4 @@
 ---
-- include: mysql.yml
-- include: configure.yml
-- include: ../handlers/main.yml
+- import_tasks: mysql.yml
+- import_tasks: configure.yml
+- import_tasks: ../handlers/main.yml

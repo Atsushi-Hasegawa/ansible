@@ -1,0 +1,18 @@
+---
+# Session settings
+common_session_timeout: 3600 # 1 hour for bastion
+common_is_long_running: false
+common_is_bastion: true
+
+# Administrative user
+common_admin_user: terraform-user
+
+# List of allowed TCP ports (Publicly accessible)
+# Only HTTP and HTTPS are open by default.
+# Other ports (MySQL:3306, MongoDB:27017, etc.) are managed by respective roles.
+common_allowed_tcp_ports:
+  - 80
+  - 443
+
+# List of allowed UDP ports
+common_allowed_udp_ports: []

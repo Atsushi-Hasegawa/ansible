@@ -1,2 +1,2 @@
 ---
-- include: ruby.yml
+- import_tasks: ruby.yml

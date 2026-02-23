@@ -1,2 +1,2 @@
 ---
-- include: service.yml
+- import_tasks: service.yml

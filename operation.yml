@@ -1,13 +1,16 @@
 ---
 - hosts: operation
-  sudo: yes
+  become: yes
   roles:
-   #- httpd
+   - common
+   - python
    - mysql
-   #- java
-   #- mongodb
+   #- httpd
+   - java
+   - mongodb
+   - kibana
+   - elasticsearch
    #- ruby
-   #- python
-   #- php
-   #- gitlab
+   - php
+   - gitlab
    #- npm

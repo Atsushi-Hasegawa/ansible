@@ -5,3 +5,4 @@
    - mysql
    - mysql-server
    - mysql-devel
+   - MySQL-python

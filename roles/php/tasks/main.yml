@@ -1,2 +1,2 @@
 ---
-- include: php.yml
+- import_tasks: php.yml

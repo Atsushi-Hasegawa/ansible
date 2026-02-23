@@ -1,0 +1,1 @@
+[operation]\nlocalhost ansible_connection=local

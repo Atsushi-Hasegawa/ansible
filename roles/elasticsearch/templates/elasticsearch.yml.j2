@@ -1,0 +1,12 @@
+cluster.name: my-application
+node.name: ${HOSTNAME}
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+network.host: {{ es_network_host }}
+http.port: {{ es_port }}
+
+# Security settings for modern Elasticsearch
+xpack.security.enabled: true
+xpack.security.enrollment.enabled: true
+xpack.security.http.ssl:
+  enabled: false # Set to true for production with certificates

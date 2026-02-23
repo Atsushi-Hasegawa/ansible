@@ -1,2 +1,2 @@
 ---
-- include: mongodb.yml
+- import_tasks: mongodb.yml

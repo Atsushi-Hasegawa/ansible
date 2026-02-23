@@ -2,19 +2,41 @@
 - name: install Developer Tools
   yum: name="@Development tools" state=present
 
-- name: install necessary python tool
-  yum: name={{item}} state=present
-  with_items:
-   - zlib-devel
-   - bzip2-devel
-   - openssl-devel
-   - ncurses-devel
-   - sqlite-devel
-   - readline-devel
-   - tk-devel
+- name: install dependencies for building Python 3.11
+  package:
+    name:
+      - zlib-devel
+      - bzip2-devel
+      - openssl-devel
+      - ncurses-devel
+      - sqlite-devel
+      - readline-devel
+      - tk-devel
+      - libffi-devel
+      - xz-devel
+      - wget
+    state: present
 
-- name: download python
-  get_url: url=https://www.python.org/ftp/python/2.7.6/Python-{{python_version}}.tgz dest=/usr/local/src
+- name: download python {{ python_version }}
+  get_url:
+    url: "https://www.python.org/ftp/python/{{ python_version }}/Python-{{ python_version }}.tgz"
+    dest: "/usr/local/src/Python-{{ python_version }}.tgz"
 
-- name: decompress python
-  command: tar xvfz Python-{{python_version}}.tgz chdir=/usr/local/src
+- name: decompress python {{ python_version }}
+  unarchive:
+    src: "/usr/local/src/Python-{{ python_version }}.tgz"
+    dest: "/usr/local/src"
+    remote_src: yes
+    creates: "/usr/local/src/Python-{{ python_version }}"
+
+- name: configure python
+  command: "./configure --enable-optimizations"
+  args:
+    chdir: "/usr/local/src/Python-{{ python_version }}"
+    creates: "/usr/local/src/Python-{{ python_version }}/Makefile"
+
+- name: make and altinstall python
+  command: "make altinstall"
+  args:
+    chdir: "/usr/local/src/Python-{{ python_version }}"
+    creates: "/usr/local/bin/python3.11"
