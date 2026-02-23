@@ -1,2 +1,2 @@
 ---
-- include: operation.yml
+- import_playbook: operation.yml

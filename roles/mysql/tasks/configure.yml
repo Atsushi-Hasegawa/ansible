@@ -1,12 +1,15 @@
 ---
-- name: copy iptables file
-  copy:
-   src=iptables
-   dest=/etc/sysconfig
-   owner=root
-   group=root
-   mode=0644
-  notify: start iptables
+- name: Fetch MySQL root password from AWS Secrets Manager
+  set_fact:
+    mysql_root_password: "{{ lookup('amazon.aws.aws_secret', mysql_secret_name, region=mysql_region) }}"
+  no_log: true
+
+- name: add mysql port to iptables
+  lineinfile:
+    path: /etc/sysconfig/iptables
+    insertbefore: "^-A INPUT -j REJECT"
+    line: "-A INPUT -p tcp --dport {{ mysql_port }} -m state --state NEW -j ACCEPT"
+  notify: restart iptables
 
 - name: add mysqld moji-code
   template: >
@@ -16,3 +19,31 @@
    group=root
    mode=0644
   notify: start mysqld
+
+- name: Start MySQL service
+  service:
+    name: mysqld
+    state: started
+    enabled: yes
+
+- name: Update MySQL root password
+  mysql_user:
+    name: root
+    host: "{{ item }}"
+    password: "{{ mysql_root_password }}"
+    state: present
+  with_items:
+    - 127.0.0.1
+    - ::1
+    - localhost
+
+- name: Remove anonymous MySQL users
+  mysql_user:
+    name: ""
+    host_all: yes
+    state: absent
+
+- name: Remove MySQL test database
+  mysql_db:
+    name: test
+    state: absent

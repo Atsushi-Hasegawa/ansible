@@ -1,12 +1,34 @@
 ---
-- name: download kibana
-  get_url: 
-   url=https://download.elastic.co/kibana/kibana/kibana-{{version}}-linux-x64.tar.gz 
-   dest={{src_dir}}
+- name: Add Elasticsearch Repository for Kibana
+  yum_repository:
+    name: elasticsearch
+    description: Elasticsearch repository for 8.x packages
+    baseurl: https://artifacts.elastic.co/packages/8.x/yum
+    gpgcheck: yes
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    enabled: yes
 
-- name: decompress kibana
-  command: tar xvfz kibana-{{version}}-linux-x64.tar.gz chdir={{src_dir}}
+- name: Install Kibana
+  yum:
+    name: kibana
+    state: present
 
-- name: rename kibana dir
-  command: mv kibana-{{version}}-linux-x64.tar.gz kibana chdir={{src_dir}}
+- name: Fetch Elasticsearch password from AWS Secrets Manager
+  set_fact:
+    es_password: "{{ lookup('amazon.aws.aws_secret', es_secret_name, region=es_region) }}"
+  no_log: true
 
+- name: Configure Kibana
+  template:
+    src: kibana.yml.j2
+    dest: /etc/kibana/kibana.yml
+    owner: root
+    group: kibana
+    mode: 0660
+  notify: restart kibana
+
+- name: Start Kibana
+  service:
+    name: kibana
+    state: started
+    enabled: yes

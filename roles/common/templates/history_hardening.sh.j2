@@ -1,0 +1,13 @@
+export HISTTIMEFORMAT="%Y/%m/%d %H:%M:%S "
+export HISTSIZE=10000
+export HISTCONTROL=ignoredups
+shopt -s histappend
+
+# Disable TMOUT if the host is tagged as LongRunning or common_is_long_running is true
+{% if (tags is defined and tags.LongRunning | default('false') | lower == 'true') or common_is_long_running %}
+# Session timeout disabled for long-running processes
+unset TMOUT
+{% else %}
+export TMOUT={{ common_session_timeout }}
+readonly TMOUT
+{% endif %}

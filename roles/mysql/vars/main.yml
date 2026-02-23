@@ -1,2 +1,5 @@
 ---
 mysql_port: 3306
+# Secret name in AWS Secrets Manager
+mysql_secret_name: "prod/mysql/root/password"
+mysql_region: "ap-northeast-1"

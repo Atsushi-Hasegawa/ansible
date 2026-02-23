@@ -1,0 +1,30 @@
+---
+- name: restart sshd
+  service:
+    name: sshd
+    state: restarted
+
+- name: restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+
+- name: restart yum-cron
+  service:
+    name: yum-cron
+    state: restarted
+
+- name: restart auditd
+  service:
+    name: auditd
+    state: restarted
+
+- name: restart iptables
+  service:
+    name: iptables
+    state: restarted
+
+- name: restart ssm-agent
+  service:
+    name: amazon-ssm-agent
+    state: restarted

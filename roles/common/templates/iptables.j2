@@ -1,0 +1,29 @@
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+
+# Allow established and related connections
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow loopback interface
+-A INPUT -i lo -j ACCEPT
+
+# Allow ICMP (Ping)
+-A INPUT -p icmp -j ACCEPT
+
+# Allow whitelisted TCP ports
+{% for port in common_allowed_tcp_ports %}
+-A INPUT -p tcp --dport {{ port }} -m state --state NEW -j ACCEPT
+{% endfor %}
+
+# Allow whitelisted UDP ports
+{% for port in common_allowed_udp_ports %}
+-A INPUT -p udp --dport {{ port }} -m state --state NEW -j ACCEPT
+{% endfor %}
+
+# Reject everything else (The "Close All" Rule)
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+
+COMMIT

@@ -1,0 +1,332 @@
+---
+# Security measures based on security.md and best practices
+
+# [Initial Access] Ensure EPEL repository is present
+- name: Install EPEL repository
+  yum:
+    name: epel-release
+    state: present
+
+# [Initial Access / Privilege Escalation] Update all packages
+- name: Update all packages (Vulnerability Management)
+  yum:
+    name: '*'
+    state: latest
+
+# [Initial Access / Privilege Escalation] Automatic security updates
+- name: Install yum-cron for automatic updates
+  yum:
+    name: yum-cron
+    state: present
+
+- name: Configure yum-cron for security updates only
+  lineinfile:
+    path: /etc/yum/yum-cron.conf
+    regexp: "^update_messages ="
+    line: "update_messages = yes"
+  notify: restart yum-cron
+
+- name: Enable and start yum-cron
+  service:
+    name: yum-cron
+    state: started
+    enabled: yes
+
+# [Initial Access] Ensure SSM Agent is running (Required for SSM access)
+- name: Ensure amazon-ssm-agent is installed and running
+  yum:
+    name: amazon-ssm-agent
+    state: latest
+  notify: restart ssm-agent
+
+- name: Enable and start ssm-agent
+  service:
+    name: amazon-ssm-agent
+    state: started
+    enabled: yes
+
+# [Initial Access] Hardening SSH (Optimized for Bastion)
+- name: Harden SSH configuration
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+    - { regexp: "^#?MaxAuthTries", line: "MaxAuthTries 3" }
+    - { regexp: "^#?ClientAliveInterval", line: "ClientAliveInterval 300" }
+    - { regexp: "^#?ClientAliveCountMax", line: "ClientAliveCountMax 3" }
+    - { regexp: "^#?AllowTcpForwarding", line: "AllowTcpForwarding yes" }
+    - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+  notify: restart sshd
+
+# [Initial Access] Install and configure Fail2Ban
+- name: Install fail2ban
+  yum:
+    name: fail2ban
+    state: present
+
+- name: Configure fail2ban jail for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [sshd]
+      enabled = true
+      port    = ssh
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+      maxretry = 3
+      bantime = 3600
+  notify: restart fail2ban
+
+- name: Enable and start fail2ban
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+# [Execution / Privilege Escalation] Ensure sudo is installed
+- name: Ensure sudo is installed
+  yum:
+    name: sudo
+    state: present
+
+# [Privilege Escalation] Restrict su to wheel group
+- name: Restrict su command to wheel group
+  lineinfile:
+    path: /etc/pam.d/su
+    regexp: "^#?auth\\s+required\\s+pam_wheel\\.so\\s+use_uid"
+    line: "auth            required        pam_wheel.so use_uid"
+    state: present
+
+- name: Ensure admin user is in wheel group
+  user:
+    name: "{{ common_admin_user }}"
+    groups: wheel
+    append: yes
+
+- name: Allow wheel group to sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%wheel'
+    line: '%wheel ALL=(ALL) ALL'
+    validate: 'visudo -cf %s'
+
+- name: Remove default ec2-user
+  user:
+    name: ec2-user
+    state: absent
+    remove: yes
+    force: yes
+  ignore_errors: yes
+
+# [Privilege Escalation / Audit] Install Lynis for security auditing
+- name: Install Lynis
+  yum:
+    name: lynis
+    state: present
+
+- name: Add daily Lynis audit cron job
+  cron:
+    name: "Daily Lynis security audit"
+    special_time: daily
+    job: "/usr/bin/lynis audit system --quick --quiet"
+
+# [Impact / Persistence] Stop and disable unnecessary services
+- name: Stop and disable unnecessary services
+  service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+  with_items:
+    - cups
+    - avahi-daemon
+    - bluetooth
+    - firstboot
+
+# [Persistence / Defense Evasion] Install AIDE and configure periodic checks
+- name: Install AIDE (File Integrity Monitoring)
+  yum:
+    name: aide
+    state: present
+
+- name: Initialize AIDE database if it doesn't exist
+  command: aide --init
+  args:
+    creates: /var/lib/aide/aide.db.new.gz
+
+- name: Move AIDE database to operational location
+  command: cp /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+  args:
+    creates: /var/lib/aide/aide.db.gz
+
+- name: Add daily AIDE check cron job
+  cron:
+    name: "Daily AIDE integrity check"
+    special_time: daily
+    job: "/usr/sbin/aide --check | /bin/mail -s 'AIDE Integrity Check for $(hostname)' root"
+
+# [Defense Evasion / Persistence] Rootkit detection
+- name: Install rkhunter
+  yum:
+    name: rkhunter
+    state: present
+
+- name: Update rkhunter database
+  command: rkhunter --propupd
+  changed_when: false
+
+- name: Add daily rkhunter check cron job
+  cron:
+    name: "Daily rkhunter scan"
+    special_time: daily
+    job: "/usr/bin/rkhunter --cronjob --report-warnings-only"
+
+# [Persistence / Defense Evasion] Auditd configuration with security rules
+- name: Install auditd
+  yum:
+    name: audit
+    state: present
+
+- name: Configure auditd rules for security monitoring
+  copy:
+    dest: /etc/audit/rules.d/ansible.rules
+    content: |
+      # Monitor user/group changes
+      -w /etc/passwd -p wa -k usergroup_modification
+      -w /etc/group -p wa -k usergroup_modification
+      -w /etc/shadow -p wa -k usergroup_modification
+      -w /etc/sudoers -p wa -k privilege_modification
+      -w /etc/sudoers.d/ -p wa -k privilege_modification
+      
+      # Monitor config changes
+      -w /etc/ssh/sshd_config -p wa -k sshd_config
+      
+      # [Privilege Escalation] Monitor SUID/SGID execution and privilege changes
+      -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -k priv_change
+      -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -k priv_change
+      -a always,exit -F arch=b64 -S setuid -S setgid -S setreuid -S setregid -k priv_change
+      
+      # Monitor execution of sensitive commands
+      -a always,exit -F arch=b64 -S execve -k execution_monitor
+  notify: restart auditd
+
+- name: Enable and start auditd
+  service:
+    name: auditd
+    state: started
+    enabled: yes
+
+# [Defense Evasion] Kernel Hardening (sysctl)
+- name: Kernel hardening via sysctl
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  with_items:
+    - { name: "net.ipv4.conf.all.accept_source_route", value: "0" }
+    - { name: "net.ipv4.conf.all.accept_redirects", value: "0" }
+    - { name: "net.ipv4.conf.all.secure_redirects", value: "0" }
+    - { name: "net.ipv4.conf.all.log_martians", value: "1" }
+    - { name: "net.ipv4.icmp_echo_ignore_broadcasts", value: "1" }
+    - { name: "net.ipv4.icmp_ignore_bogus_error_responses", value: "1" }
+    - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { name: "kernel.randomize_va_space", value: "2" }
+    - { name: "net.ipv6.conf.all.disable_ipv6", value: "1" }
+    - { name: "net.ipv6.conf.default.disable_ipv6", value: "1" }
+    - { name: "fs.suid_dumpable", value: "0" }
+
+# [Defense Evasion] SELinux enforcement
+- name: Ensure SELinux is set to enforcing mode
+  selinux:
+    policy: targeted
+    state: enforcing
+
+# [Initial Access] Set login banner (MOTD)
+- name: Configure login banner (MOTD)
+  copy:
+    dest: /etc/motd
+    content: |
+      ***************************************************************************
+      * NOTICE TO USERS: This system is for authorized use only.                *
+      * All activities are monitored and logged. Unauthorized access is strictly*
+      * prohibited and will be prosecuted to the full extent of the law.        *
+      ***************************************************************************
+
+# [Persistence] Harden bash history
+- name: Harden bash history settings
+  template:
+    src: history_hardening.sh.j2
+    dest: /etc/profile.d/history_hardening.sh
+    mode: '0644'
+
+# [Exfiltration] Restrict /var/log permissions
+- name: Restrict /var/log permissions
+  file:
+    path: /var/log
+    mode: '0750'
+    recurse: no
+
+# [Defense Evasion] Disable Core Dumps
+- name: Disable core dumps
+  lineinfile:
+    dest: /etc/security/limits.conf
+    line: "* hard core 0"
+    insertafter: EOF
+
+# [Lateral Movement] Strict Firewall Enforcement
+- name: Ensure iptables is installed
+  yum:
+    name: iptables-services
+    state: present
+
+- name: Apply strict iptables configuration (Close unauthorized ports)
+  template:
+    src: iptables.j2
+    dest: /etc/sysconfig/iptables
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart iptables
+
+- name: Enable and start iptables
+  service:
+    name: iptables
+    state: started
+    enabled: yes
+
+- name: Add daily firewall enforcement cron job
+  cron:
+    name: "Ensure firewall strictness"
+    special_time: daily
+    job: "/sbin/iptables-restore < /etc/sysconfig/iptables"
+
+# [Initial Access / Lateral Movement] Port Monitoring
+- name: Install nmap for port auditing
+  yum:
+    name: nmap
+    state: present
+
+- name: Create port monitoring script
+  copy:
+    dest: /usr/local/bin/check_open_ports.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # List all listening TCP/UDP ports
+      LOG_FILE="/var/log/open_ports.log"
+      echo "--- Port Scan at $(date) ---" >> $LOG_FILE
+      netstat -tulpn | grep LISTEN >> $LOG_FILE
+      # You can also use nmap for a localhost scan
+      # nmap -sT -O localhost >> $LOG_FILE
+
+- name: Add daily port monitoring cron job
+  cron:
+    name: "Daily open port check"
+    special_time: daily
+    job: "/usr/local/bin/check_open_ports.sh"

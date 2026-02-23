@@ -1,3 +1,7 @@
 ---
-java_version: 1.7.0
-es_version: 2.0.0
+java_version: 21
+es_version: 8.15.0 # Upgrade to a modern version for better security
+es_port: 9200
+es_secret_name: "prod/elasticsearch/elastic/password"
+es_region: "ap-northeast-1"
+es_network_host: "127.0.0.1"

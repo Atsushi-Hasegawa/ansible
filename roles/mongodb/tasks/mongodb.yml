@@ -1,12 +1,44 @@
 ---
 - name: copy mongodb.repo
-  copy: 
-   src=mongodb.repo 
-   dest=/etc/yum.repos.d/mongodb.repo 
-   owner=root
-   group=root
-   mode=0644
+  copy:
+    src: mongodb.repo
+    dest: /etc/yum.repos.d/mongodb.repo
+    owner: root
+    group: root
+    mode: 0644
 
 - name: install mongodb
-  yum: name=mongodb pkg=mongodb-org
-  notify: start mongodb
+  yum:
+    name: mongodb-org
+    state: present
+
+- name: Fetch MongoDB admin password from AWS Secrets Manager
+  set_fact:
+    mongodb_admin_password: "{{ lookup('amazon.aws.aws_secret', mongodb_secret_name, region=mongodb_region) }}"
+  no_log: true
+
+- name: Configure MongoDB
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart mongodb
+
+- name: Start MongoDB
+  service:
+    name: mongod
+    state: started
+    enabled: yes
+
+# Note: In a real scenario, the first time you'd need to create the admin user 
+# without auth enabled, then enable it. This task assumes the environment is ready.
+- name: Ensure MongoDB admin user exists
+  mongodb_user:
+    database: admin
+    name: admin
+    password: "{{ mongodb_admin_password }}"
+    roles:
+      - { db: "admin", role: "root" }
+    state: present

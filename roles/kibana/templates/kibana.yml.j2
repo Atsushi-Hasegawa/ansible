@@ -1,0 +1,10 @@
+server.port: {{ kibana_server_port }}
+server.host: "{{ kibana_server_host }}"
+elasticsearch.hosts: ["{{ elasticsearch_url }}"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "{{ es_password }}"
+logging.appenders.default:
+  type: file
+  filename: /var/log/kibana/kibana.log
+  layout:
+    type: json

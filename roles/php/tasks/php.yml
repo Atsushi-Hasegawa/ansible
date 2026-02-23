@@ -1,19 +1,26 @@
---- 
-- name: epel download and install
-  yum: name=http://dl.fedoraproject.org/pub/epel/{{centos}}/x86_64/epel-release-{{epel_version}}.noarch.rpm state=present
+---
+- name: Install EPEL and Remi repositories
+  yum:
+    name:
+      - "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ epel_version }}.noarch.rpm"
+      - "http://rpms.famillecollet.com/enterprise/remi-release-{{ remi_version }}.rpm"
+    state: present
 
-- name: remi download and install
-  yum: name=http://rpms.famillecollet.com/enterprise/remi-release-{{remi_version}}.rpm state=present
+- name: Enable PHP 8.2 Remi repository
+  command: yum-config-manager --enable remi-php82
+  changed_when: false
 
-- name: php install
-  yum: name={{item}} disablerepo=remi state=present
-  with_items:
-   - php
-   - php-devel
-   - php-common
-   - php-gd
-   - php-mbstring
-   - php-mysql
-   - php-pdo
-   - php-pear
-   - php-xml
+- name: Install PHP 8.2 and common extensions
+  yum:
+    name:
+      - php
+      - php-devel
+      - php-common
+      - php-gd
+      - php-mbstring
+      - php-mysqlnd
+      - php-pdo
+      - php-pear
+      - php-xml
+    state: present
+    enablerepo: remi-php82

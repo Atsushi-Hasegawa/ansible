@@ -1,9 +1,45 @@
 ---
-- name: install java
-  yum: name={{ item }} state=present
-  with_items: 
-   - curl-devel 
-   - java-{{ java_version }}-openjdk
+- name: Import Elasticsearch GPG Key
+  rpm_key:
+    state: present
+    key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
 
-- name: rpm package install
-  yum: name=https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/rpm/elasticsearch/{{es_version}}/elasticsearch-{{es_version}}.rpm state=present
+- name: Add Elasticsearch Repository
+  yum_repository:
+    name: elasticsearch
+    description: Elasticsearch repository for 8.x packages
+    baseurl: https://artifacts.elastic.co/packages/8.x/yum
+    gpgcheck: yes
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    enabled: yes
+
+- name: Install Elasticsearch
+  yum:
+    name: elasticsearch
+    state: present
+
+- name: Configure Elasticsearch
+  template:
+    src: elasticsearch.yml.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: root
+    group: elasticsearch
+    mode: 0660
+  notify: restart elasticsearch
+
+- name: Start Elasticsearch
+  service:
+    name: elasticsearch
+    state: started
+    enabled: yes
+
+- name: Fetch Elasticsearch password from AWS Secrets Manager
+  set_fact:
+    es_password: "{{ lookup('amazon.aws.aws_secret', es_secret_name, region=es_region) }}"
+  no_log: true
+
+# Use elasticsearch-reset-password or similar API to set the password in 8.x
+- name: Set elastic user password
+  shell: "echo '{{ es_password }}' | /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -i -b"
+  no_log: true
+  changed_when: false

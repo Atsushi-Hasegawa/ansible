@@ -1,2 +1,2 @@
 ---
-- include: kibana.yml
+- import_tasks: kibana.yml
