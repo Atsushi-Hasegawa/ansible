@@ -8,8 +8,8 @@ common_is_bastion: true
 common_admin_user: terraform-user
 
 # List of allowed TCP ports (Publicly accessible)
+# Port 22 (SSH) is REMOVED to enforce AWS SSM Session Manager access.
 # Only HTTP and HTTPS are open by default.
-# Other ports (MySQL:3306, MongoDB:27017, etc.) are managed by respective roles.
 common_allowed_tcp_ports:
   - 80
   - 443

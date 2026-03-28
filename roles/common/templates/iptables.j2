@@ -1,8 +1,9 @@
 *filter
-:INPUT ACCEPT [0:0]
-:FORWARD ACCEPT [0:0]
-:OUTPUT ACCEPT [0:0]
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
 
+# --- INPUT Rules ---
 # Allow established and related connections
 -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
@@ -22,8 +23,33 @@
 -A INPUT -p udp --dport {{ port }} -m state --state NEW -j ACCEPT
 {% endfor %}
 
-# Reject everything else (The "Close All" Rule)
+# --- OUTPUT Rules ---
+# Allow loopback
+-A OUTPUT -o lo -j ACCEPT
+
+# Allow established and related connections
+-A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow DNS (TCP/UDP 53)
+-A OUTPUT -p udp --dport 53 -j ACCEPT
+-A OUTPUT -p tcp --dport 53 -j ACCEPT
+
+# Allow HTTP/HTTPS for updates (Yum/Apt)
+-A OUTPUT -p tcp --dport 80 -j ACCEPT
+-A OUTPUT -p tcp --dport 443 -j ACCEPT
+
+# Allow NTP (UDP 123)
+-A OUTPUT -p udp --dport 123 -j ACCEPT
+
+# Allow Egress to specific internal services (Example: Logging/DB)
+{% for egress_port in common_allowed_egress_tcp_ports | default([]) %}
+-A OUTPUT -p tcp --dport {{ egress_port }} -j ACCEPT
+{% endfor %}
+
+# Reject everything else
 -A INPUT -j REJECT --reject-with icmp-host-prohibited
 -A FORWARD -j REJECT --reject-with icmp-host-prohibited
+# Log dropped output (Useful for debugging/forensics)
+-A OUTPUT -j LOG --log-prefix "IPTABLES_OUTPUT_DROP: "
 
 COMMIT

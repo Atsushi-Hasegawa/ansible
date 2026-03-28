@@ -1,0 +1,75 @@
+# --- Security Log Source (Auditd, Fail2ban, SSH, Sudo) ---
+<source>
+  @type tail
+  path /var/log/secure
+  pos_file /var/log/td-agent/secure.log.pos
+  tag security.ssh
+  <parse>
+    @type syslog
+  </parse>
+</source>
+
+<source>
+  @type tail
+  path /var/log/fail2ban.log
+  pos_file /var/log/td-agent/fail2ban.log.pos
+  tag security.fail2ban
+  <parse>
+    @type none
+  </parse>
+</source>
+
+<source>
+  @type tail
+  path /var/log/audit/audit.log
+  pos_file /var/log/td-agent/audit.log.pos
+  tag security.audit
+  <parse>
+    @type none
+  </parse>
+</source>
+
+# --- Security Filter: Detect Critical Events for Alerting ---
+# Detect SSH login success/failure
+<filter security.ssh>
+  @type grep
+  <regexp>
+    key message
+    pattern /Accepted|Failed|Invalid user/
+  </regexp>
+</filter>
+
+# Detect Fail2ban Banning
+<filter security.fail2ban>
+  @type grep
+  <regexp>
+    key message
+    pattern /Ban|Unban/
+  </regexp>
+</filter>
+
+# --- Output: Send to Elasticsearch for Visualization (SIEM) ---
+<match security.**>
+  @type elasticsearch
+  host "{{ elasticsearch_host | default('localhost') }}"
+  port 9200
+  logstash_format true
+  logstash_prefix "security-audit"
+  include_timestamp true
+</match>
+
+# --- Real-time Alerts: Send to Slack/Webhook ---
+# This filter picks only critical alerts (e.g., Ban, Failed logins)
+<match security.alert.**>
+  @type copy
+  <store>
+    @type slack
+    webhook_url "{{ slack_webhook_url | default('https://hooks.slack.com/services/...') }}"
+    channel "#security-alerts"
+    username "Security-Bot"
+    icon_emoji :lock:
+    flush_interval 5s
+    message "Security Event Detected: %s"
+    message_keys message
+  </store>
+</match>

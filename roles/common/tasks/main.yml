@@ -32,8 +32,8 @@
     state: started
     enabled: yes
 
-# [Initial Access] Ensure SSM Agent is running (Required for SSM access)
-- name: Ensure amazon-ssm-agent is installed and running
+# [Initial Access] Ensure SSM Agent is running (Enforce Session Manager)
+- name: Ensure amazon-ssm-agent is installed and up-to-date
   yum:
     name: amazon-ssm-agent
     state: latest
@@ -45,7 +45,15 @@
     state: started
     enabled: yes
 
-# [Initial Access] Hardening SSH (Optimized for Bastion)
+# [Privilege Escalation] Configure ssm-user for Audit and IAM Integration
+- name: Ensure ssm-user (default for SSM) is in wheel group for auditing
+  user:
+    name: ssm-user
+    groups: wheel
+    append: yes
+  ignore_errors: yes
+
+# [Initial Access] Hardening SSH (Modern Security Standards - No Port 22 allowed by Firewall)
 - name: Harden SSH configuration
   lineinfile:
     dest: /etc/ssh/sshd_config
@@ -60,7 +68,58 @@
     - { regexp: "^#?ClientAliveCountMax", line: "ClientAliveCountMax 3" }
     - { regexp: "^#?AllowTcpForwarding", line: "AllowTcpForwarding yes" }
     - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+    - { regexp: "^#?AllowAgentForwarding", line: "AllowAgentForwarding no" }
+    - { regexp: "^#?LogLevel", line: "LogLevel VERBOSE" }
+    - { regexp: "^#?Ciphers", line: "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" }
+    - { regexp: "^#?MACs", line: "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" }
+    - { regexp: "^#?KexAlgorithms", line: "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" }
   notify: restart sshd
+
+# [Privilege Escalation] Password Policy (PAM Hardening)
+- name: Install libpwquality for password policy
+  yum:
+    name: libpwquality
+    state: present
+
+- name: Set password quality requirements
+  lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: "^#?minlen", line: "minlen = 14" }
+    - { regexp: "^#?dcredit", line: "dcredit = -1" }
+    - { regexp: "^#?ucredit", line: "ucredit = -1" }
+    - { regexp: "^#?ocredit", line: "ocredit = -1" }
+    - { regexp: "^#?lcredit", line: "lcredit = -1" }
+
+# [Execution / Privilege Escalation] Protect /dev/shm
+- name: Harden /dev/shm with noexec,nosuid,nodev
+  mount:
+    name: /dev/shm
+    src: tmpfs
+    fstype: tmpfs
+    opts: "defaults,noexec,nosuid,nodev"
+    state: mounted
+
+# [Lateral Movement / Defense Evasion] Disable unused filesystems
+- name: Disable unused filesystems (USB Storage, etc.)
+  copy:
+    dest: "/etc/modprobe.d/{{ item }}.conf"
+    content: "install {{ item }} /bin/true"
+  with_items:
+    - usb-storage
+    - cramfs
+    - freevxfs
+    - jffs2
+    - hfs
+    - hfsplus
+    - squasfs
+    - udf
+    - dccp
+    - sctp
+    - rds
+    - tipc
 
 # [Initial Access] Install and configure Fail2Ban
 - name: Install fail2ban
@@ -93,6 +152,22 @@
     name: sudo
     state: present
 
+# [Execution / Privilege Escalation] Sudo TTY Logging (Record all sudo sessions)
+- name: Create sudo log directory
+  file:
+    path: /var/log/sudo-io
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Enable sudo session logging (TTY)
+  lineinfile:
+    path: /etc/sudoers
+    regexp: "^Defaults\\s+iolog_dir"
+    line: "Defaults iolog_dir=\"/var/log/sudo-io\", log_input, log_output"
+    validate: 'visudo -cf %s'
+
 # [Privilege Escalation] Restrict su to wheel group
 - name: Restrict su command to wheel group
   lineinfile:
@@ -115,12 +190,19 @@
     line: '%wheel ALL=(ALL) ALL'
     validate: 'visudo -cf %s'
 
-- name: Remove default ec2-user
+# [Initial Access] Remove common default users to reduce attack surface
+- name: Remove common default users
   user:
-    name: ec2-user
+    name: "{{ item }}"
     state: absent
     remove: yes
     force: yes
+  with_items:
+    - ec2-user
+    - centos
+    - ubuntu
+    - fedora
+    - admin
   ignore_errors: yes
 
 # [Privilege Escalation / Audit] Install Lynis for security auditing
@@ -147,6 +229,45 @@
     - avahi-daemon
     - bluetooth
     - firstboot
+
+# [Privilege Escalation] Auditd rules for PCI-DSS Compliance (Deeper Monitoring)
+- name: Configure advanced auditd rules
+  copy:
+    dest: /etc/audit/rules.d/pci-dss.rules
+    content: |
+      # Record all executions of privileged commands (eUID=0)
+      -a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k privileged_execution
+      
+      # Monitor file deletions and renames (Tampering)
+      -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -k delete_rename
+      
+      # Monitor access to sensitive files
+      -w /etc/shadow -p wa -k shadow_access
+      -w /etc/security/opasswd -p wa -k shadow_access
+      -w /etc/gshadow -p wa -k shadow_access
+      
+      # Monitor system time changes
+      -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time_change
+      -w /etc/localtime -p wa -k time_change
+      
+      # Ensure audit logs themselves are protected
+      -w /var/log/audit/ -k audit_log_integrity
+  notify: restart auditd
+
+# [Privilege Escalation / Defense Evasion] Harden Service Accounts
+- name: Ensure service accounts have no-login shell
+  user:
+    name: "{{ item }}"
+    shell: /sbin/nologin
+  with_items:
+    - mysql
+    - mongodb
+    - elasticsearch
+    - kibana
+    - fluentd
+    - apache
+    - nginx
+  ignore_errors: yes
 
 # [Persistence / Defense Evasion] Install AIDE and configure periodic checks
 - name: Install AIDE (File Integrity Monitoring)
@@ -210,6 +331,12 @@
       -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -k priv_change
       -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -k priv_change
       -a always,exit -F arch=b64 -S setuid -S setgid -S setreuid -S setregid -k priv_change
+      
+      # [Defense Evasion] Monitor kernel module loading/unloading
+      -w /sbin/insmod -p x -k modules
+      -w /sbin/rmmod -p x -k modules
+      -w /sbin/modprobe -p x -k modules
+      -a always,exit -F arch=b64 -S init_module -S delete_module -k modules
       
       # Monitor execution of sensitive commands
       -a always,exit -F arch=b64 -S execve -k execution_monitor

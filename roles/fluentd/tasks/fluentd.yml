@@ -1,5 +1,38 @@
 ---
-- name: fluentdをインストール
-  command: curl -L http://toolbelt.treasuredata.com/sh/install-redhat-td-agent2.sh | sh
+- name: Install td-agent (Fluentd)
+  shell: curl -L https://toolbelt.treasuredata.com/sh/install-redhat-td-agent3.sh | sh
+  args:
+    creates: /etc/td-agent/td-agent.conf
+
+- name: Install Fluentd plugins for Security (Elasticsearch & Slack/Webhook)
+  td_agent_gem:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - fluent-plugin-elasticsearch
+    - fluent-plugin-slack
+    - fluent-plugin-grep
+
+- name: Create Fluentd configuration for Security Monitoring
+  template:
+    src: td-agent-security.conf.j2
+    dest: /etc/td-agent/td-agent.conf
+    owner: td-agent
+    group: td-agent
+    mode: '0644'
+  notify: restart td-agent
+
+- name: Ensure td-agent is enabled and running
+  service:
+    name: td-agent
+    state: started
+    enabled: yes
+
+- name: Grant td-agent access to security logs
+  user:
+    name: td-agent
+    groups: adm
+    append: yes
+  notify: restart td-agent
 
 
